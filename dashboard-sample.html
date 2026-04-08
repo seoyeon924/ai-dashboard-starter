@@ -7,7 +7,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600&family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600&family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
@@ -2264,6 +2263,216 @@
       document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', i===idx));
       document.querySelectorAll('.dash-panel').forEach((p,i) => p.classList.toggle('active', i===idx));
     }
+
+function updateRangeFill(input) {
+  const min = parseFloat(input.min) || 0;
+  const max = parseFloat(input.max) || 100;
+  const pct = ((parseFloat(input.value) - min) / (max - min)) * 100;
+  input.style.background = `linear-gradient(to right, #4fb799 ${pct}%, rgba(96,79,67,.15) ${pct}%)`;
+}
+
+/* ── SIMULATION FUNCTIONS ── */
+
+function runSim(inputEl) {
+  // Support being called as oninput handler or as bulk init
+  const widgets = inputEl
+    ? [inputEl.closest('.sim-widget')]
+    : document.querySelectorAll('.sim-widget');
+  widgets.forEach(container => {
+    if (!container) return;
+    const input = container.querySelector('.sim-input');
+    if (!input) return;
+    const d = Math.max(0, Math.min(30, parseFloat(input.value) || 0));
+    const baseDiscount = 17.7;
+    const baseMargin = 10.7;
+    const marginDelta = (baseDiscount - d) * 1.3;
+    const newMargin = Math.max(0, baseMargin + marginDelta).toFixed(1);
+    const profitDelta = Math.round((baseDiscount - d) * 700);
+    const sign = profitDelta >= 0 ? '+' : '';
+    const vals = container.querySelectorAll('.sim-res-val');
+    if (vals[0]) vals[0].textContent = newMargin + '%';
+    if (vals[1]) vals[1].textContent = sign + '$' + Math.abs(profitDelta / 1000).toFixed(1) + 'K';
+    if (vals[2]) vals[2].textContent = sign + marginDelta.toFixed(1) + '%p';
+  });
+}
+
+/* ── dp0: Pareto SKU ── */
+function runParetoSim(inputEl) {
+  const w = inputEl.closest('.sim-pareto');
+  const x = Math.max(5, Math.min(50, parseFloat(inputEl.value) || 20));
+  const pts = [[5,55],[10,65],[15,72],[20,80],[25,85],[30,88],[40,92],[50,95]];
+  let cov = 95;
+  for (let i = 0; i < pts.length - 1; i++) {
+    if (x >= pts[i][0] && x <= pts[i+1][0]) {
+      const t = (x - pts[i][0]) / (pts[i+1][0] - pts[i][0]);
+      cov = Math.round(pts[i][1] + t * (pts[i+1][1] - pts[i][1]));
+      break;
+    }
+  }
+  if (x < 5) cov = 55;
+  const skuCount = Math.round(x / 100 * 3500);
+  const efficiency = (cov / x).toFixed(1);
+  const vals = w.querySelectorAll('.sim-res-val');
+  if (vals[0]) vals[0].textContent = cov + '%';
+  if (vals[1]) vals[1].textContent = skuCount + '개';
+  if (vals[2]) vals[2].textContent = efficiency + '×';
+}
+
+/* ── dp0: Category Mix ── */
+function runMixSim(inputEl) {
+  updateRangeFill(inputEl);
+  const w = inputEl.closest('.sim-mix');
+  const techInput  = w.querySelector('[data-key="tech"]');
+  const officeInput = w.querySelector('[data-key="office"]');
+  const tech   = Math.min(60, parseFloat(techInput.value) || 36);
+  const office = Math.min(50, parseFloat(officeInput.value) || 31);
+  const furn   = Math.max(0, 100 - tech - office);
+  w.querySelector('.tech-val').textContent   = tech + '%';
+  w.querySelector('.office-val').textContent = office + '%';
+  const furnNote = w.querySelector('.furn-note');
+  if (furnNote) furnNote.innerHTML = 'Furniture(마진 10.7%)는 자동으로 나머지: <strong>' + furn + '%</strong>';
+  const margin = ((tech/100)*35 + (furn/100)*10.7 + (office/100)*25).toFixed(1);
+  const profit = Math.round(2300 * parseFloat(margin) / 100);
+  const risk   = tech > 45 ? '높음 ⚠' : tech > 30 ? '보통' : '낮음 ✓';
+  const vals = w.querySelectorAll('.sim-res-val');
+  if (vals[0]) vals[0].textContent = margin + '%';
+  if (vals[1]) vals[1].textContent = '$' + profit + 'K';
+  if (vals[2]) vals[2].textContent = risk;
+}
+
+/* ── dp1: At-Risk Conversion ── */
+function runAtRiskSim(inputEl) {
+  const w = inputEl.closest('.sim-atrisk');
+  const n = Math.max(0, Math.min(2099, parseFloat(inputEl.value) || 500));
+  const ltvGain  = n * 7700;
+  const profitEst = Math.round(ltvGain * 0.3);
+  const pct = Math.round(n / 2099 * 100);
+  const vals = w.querySelectorAll('.sim-res-val');
+  if (vals[0]) vals[0].textContent = '+$' + (ltvGain / 1000).toFixed(0) + 'K';
+  if (vals[1]) vals[1].textContent = '+$' + (profitEst / 1000).toFixed(0) + 'K';
+  if (vals[2]) vals[2].textContent = pct + '%';
+}
+
+/* ── dp1: Campaign ROI ── */
+function runCampaignROI(inputEl) {
+  const w = inputEl.closest('.sim-campaign');
+  const budget = Math.max(100, Math.min(50000, parseFloat(inputEl.value) || 3000));
+  const converted  = Math.round(budget / 15);
+  const ltvReturn  = converted * 7700;
+  const roi = Math.round(ltvReturn / budget);
+  const vals = w.querySelectorAll('.sim-res-val');
+  if (vals[0]) vals[0].textContent = converted + '명';
+  if (vals[1]) vals[1].textContent = '+$' + (ltvReturn / 1000).toFixed(0) + 'K';
+  if (vals[2]) vals[2].textContent = roi + '×';
+}
+
+/* ── dp2: Segment Discount ── */
+function runSegDiscountSim(inputEl) {
+  updateRangeFill(inputEl);
+  const w = inputEl.closest('.sim-segdiscount');
+  w.querySelectorAll('.seg-val').forEach(el => {
+    const seg   = el.dataset.seg;
+    const input = w.querySelector('[data-seg="' + seg + '"]');
+    if (input) el.textContent = input.value + '%';
+  });
+  const champD  = parseFloat(w.querySelector('[data-seg="champ"]').value);
+  const atRiskD = parseFloat(w.querySelector('[data-seg="atrisk"]').value);
+  const newD    = parseFloat(w.querySelector('[data-seg="new"]').value);
+  const discCost = Math.round(920000 * champD/100 + 690000 * atRiskD/100 + 690000 * newD/100);
+  const revBoost = Math.round(920000*(champD/100)*0.1 + 690000*(atRiskD/100)*1.24 + 690000*(newD/100)*0.8);
+  const roi = discCost > 0 ? (revBoost / discCost).toFixed(2) : '∞';
+  const vals = w.querySelectorAll('.sim-res-val');
+  if (vals[0]) vals[0].textContent = '$' + (discCost / 1000).toFixed(0) + 'K';
+  if (vals[1]) vals[1].textContent = '+$' + (revBoost / 1000).toFixed(0) + 'K';
+  if (vals[2]) vals[2].textContent = roi + '×';
+}
+
+/* ── dp2: Price Elasticity ── */
+function runElasticitySim(inputEl) {
+  const w = inputEl.closest('.sim-elasticity');
+  const priceUp = Math.max(0, Math.min(30, parseFloat(inputEl.value) || 5));
+  const demandChange  = (-0.3 * priceUp).toFixed(1);
+  const revenueChange = (((1 + priceUp/100) * (1 + (-0.3 * priceUp)/100)) - 1) * 100;
+  const marginChange  = (priceUp * 0.9).toFixed(1);
+  const vals = w.querySelectorAll('.sim-res-val');
+  if (vals[0]) vals[0].textContent = demandChange + '%';
+  if (vals[1]) vals[1].textContent = (revenueChange >= 0 ? '+' : '') + revenueChange.toFixed(1) + '%';
+  if (vals[2]) vals[2].textContent = '+' + marginChange + '%p';
+}
+
+/* ── dp3: Holt-Winters ── */
+function runHoltSim(inputEl) {
+  updateRangeFill(inputEl);
+  const w = inputEl.closest('.sim-holt');
+  const alphaInput = w.querySelector('[data-param="alpha"]');
+  const betaInput  = w.querySelector('[data-param="beta"]');
+  w.querySelectorAll('.param-val').forEach(el => {
+    const p = el.dataset.param;
+    const i = w.querySelector('[data-param="' + p + '"]');
+    if (i) el.textContent = i.value;
+  });
+  const alpha = parseFloat(alphaInput.value);
+  const beta  = parseFloat(betaInput.value);
+  const forecast   = Math.round(198 * (1 + (beta - 0.2) * 2.5) * (1 + (alpha - 0.3) * 0.3));
+  const volatility = Math.round(38 * (1 + (alpha - 0.3) * 0.6));
+  const stability  = alpha < 0.3 ? '안정적 (장기 추세)' : alpha > 0.6 ? '민감 (최근 반응)' : '균형';
+  const vals = w.querySelectorAll('.sim-res-val');
+  if (vals[0]) vals[0].textContent = '$' + forecast + 'K';
+  if (vals[1]) vals[1].textContent = '±' + volatility + '%';
+  if (vals[2]) vals[2].textContent = stability;
+}
+
+/* ── dp3: Technology Dependency ── */
+function runTechDependSim(inputEl) {
+  updateRangeFill(inputEl);
+  const w = inputEl.closest('.sim-techdep');
+  const techPct = Math.max(15, Math.min(60, parseFloat(inputEl.value) || 36));
+  const valEl = w.querySelector('.tech-dep-val');
+  if (valEl) valEl.textContent = techPct + '%';
+  const newVol = Math.round(38 * techPct / 36);
+  const marginDelta = ((techPct - 36) * -0.08).toFixed(1);
+  const risk = techPct > 45 ? '위험 ⚠' : techPct > 35 ? '주의' : '안전 ✓';
+  const vals = w.querySelectorAll('.sim-res-val');
+  if (vals[0]) vals[0].textContent = '±' + newVol + '%';
+  if (vals[1]) vals[1].textContent = (parseFloat(marginDelta) >= 0 ? '+' : '') + marginDelta + '%p';
+  if (vals[2]) vals[2].textContent = risk;
+}
+
+/* ── dp3: Scenario Toggle ── */
+function selectScenario(btn) {
+  const w = btn.closest('.sim-scenario');
+  w.querySelectorAll('.sim-scenario-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const s = btn.dataset.scenario;
+  const data = {
+    opt:  { q:['$215K','$228K','$241K'], note:'Tech 회복 + 계절성 피크 조기 도래', color:'#218d72' },
+    base: { q:['$198K','$204K','$211K'], note:'현재 추세 유지, MAPE 87.3%',          color:'#5b8ef0' },
+    pess: { q:['$168K','$155K','$148K'], note:'Tech 의존 리스크 현실화 + 재고 부족', color:'#9b2d38' },
+  };
+  const d = data[s];
+  const vals = w.querySelectorAll('.sim-res-val');
+  d.q.forEach((v, i) => { if (vals[i]) { vals[i].textContent = v; vals[i].style.color = d.color; } });
+  const noteEl = w.querySelector('.scenario-note');
+  if (noteEl) { noteEl.textContent = d.note; noteEl.style.color = d.color; }
+}
+
+/* ── Init all sims on load & after clone ── */
+function initAllSims(root) {
+  const r = root || document;
+  r.querySelectorAll('.sim-pareto .sim-input').forEach(el => runParetoSim(el));
+  r.querySelectorAll('.sim-mix [data-key="tech"]').forEach(el => runMixSim(el));
+  r.querySelectorAll('.sim-atrisk .sim-input').forEach(el => runAtRiskSim(el));
+  r.querySelectorAll('.sim-campaign .sim-input').forEach(el => runCampaignROI(el));
+  r.querySelectorAll('.sim-segdiscount [data-seg="champ"]').forEach(el => runSegDiscountSim(el));
+  r.querySelectorAll('.sim-elasticity .sim-input').forEach(el => runElasticitySim(el));
+  r.querySelectorAll('.sim-holt [data-param="alpha"]').forEach(el => runHoltSim(el));
+  r.querySelectorAll('.sim-techdep input[type="range"]').forEach(el => runTechDependSim(el));
+  // Fill all remaining range sliders not handled above
+  r.querySelectorAll('.sim-range').forEach(el => updateRangeFill(el));
+  runSim();
+}
+document.addEventListener('DOMContentLoaded', () => initAllSims());
+
   </script>
 </body>
 </html>
