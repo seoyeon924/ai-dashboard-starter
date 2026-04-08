@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales Analysis Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', 'Pretendard', -apple-system, sans-serif; background: #f5f5f5; color: #1a1a1a; }
+
+  .layout { display: flex; min-height: 100vh; }
+
+  /* Sidebar */
+  .sidebar { width: 220px; background: #111111; padding: 28px 20px; flex-shrink: 0; }
+  .sidebar-title { color: #ffffff; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+  .sidebar-sub { color: rgba(255,255,255,0.4); font-size: 11px; margin-bottom: 32px; }
+  .sidebar-label { color: rgba(255,255,255,0.35); font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px; }
+  .sidebar-item { color: rgba(255,255,255,0.65); font-size: 12px; padding: 6px 10px; border-radius: 6px; margin-bottom: 3px; cursor: pointer; transition: all .15s; }
+  .sidebar-item:hover { background: rgba(255,255,255,.07); color: rgba(255,255,255,.9); }
+  .sidebar-item.active { background: rgba(255,255,255,0.1); color: #ffffff; }
+  .sidebar-item.ai-item { color: rgba(53,201,149,0.85); }
+  .sidebar-item.ai-item.active { background: rgba(53,201,149,0.15); color: #35c995; }
+  .sidebar-divider { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 20px 0; }
+  .sidebar-kpi { margin-bottom: 16px; }
+  .sidebar-kpi-label { color: rgba(255,255,255,0.35); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+  .sidebar-kpi-value { color: #ffffff; font-size: 18px; font-weight: 700; }
+  .sidebar-kpi-note { color: rgba(255,255,255,0.4); font-size: 10px; margin-top: 2px; }
+
+  /* Main */
+  .main { flex: 1; padding: 32px; overflow-y: auto; }
+  .section { display: none; }
+  .section.active { display: block; }
+  .page-header { margin-bottom: 28px; }
+  .page-title { font-size: 20px; font-weight: 700; color: #0a0a0a; margin-bottom: 4px; }
+  .page-sub { font-size: 13px; color: rgba(0,0,0,0.45); }
+
+  /* Cards */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  .card { background: #ffffff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 20px; }
+  .card-title { font-size: 11px; font-weight: 600; color: rgba(0,0,0,0.45); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+  .kpi-value { font-size: 28px; font-weight: 800; color: #0a0a0a; letter-spacing: -0.02em; margin-bottom: 6px; }
+  .kpi-delta { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 20px; display: inline-block; }
+  .kpi-delta.bad  { background: rgba(239,125,134,0.12); color: #c44d58; }
+  .kpi-delta.good { background: rgba(53,201,149,0.12); color: #1e8a5e; }
+  .kpi-delta.warn { background: rgba(239,176,93,0.12); color: #a06010; }
+  .kpi-note { font-size: 11px; color: rgba(0,0,0,0.4); margin-top: 6px; line-height: 1.4; }
+
+  /* Chart cards */
+  .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .chart-card { background: #ffffff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 22px; }
+  .chart-card.full { grid-column: 1 / -1; }
+  .chart-title { font-size: 13px; font-weight: 700; color: #0a0a0a; margin-bottom: 4px; }
+  .chart-desc  { font-size: 11px; color: rgba(0,0,0,0.4); margin-bottom: 18px; line-height: 1.4; }
+
+  /* Insight card */
+  .insight-card { background: #ffffff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 22px; margin-bottom: 24px; }
+  .insight-title { font-size: 13px; font-weight: 700; color: #0a0a0a; margin-bottom: 16px; }
+  .insight-item { display: flex; gap: 12px; margin-bottom: 14px; align-items: flex-start; }
+  .insight-num { width: 22px; height: 22px; border-radius: 50%; background: #0a0a0a; color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .insight-text { font-size: 13px; color: #1a1a1a; line-height: 1.6; }
+  .insight-text strong { color: #0a0a0a; }
+
+  /* Action board */
+  .action-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .action-card { background: #ffffff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 18px; }
+  .action-priority { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
+  .action-priority.p1 { color: #c44d58; }
+  .action-priority.p2 { color: #a06010; }
+  .action-priority.p3 { color: #1e8a5e; }
+  .action-text   { font-size: 13px; font-weight: 600; color: #0a0a0a; margin-bottom: 6px; line-height: 1.4; }
+  .action-detail { font-size: 11px; color: rgba(0,0,0,0.45); line-height: 1.5; }
+
+  svg text { font-family: 'Inter', 'Pretendard', sans-serif; }
+
+  /* ═══ AI 분석 섹션 ═══ */
+  .ai-tab-nav { display: flex; gap: 4px; margin-bottom: 24px; background: #fff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 5px; width: fit-content; }
+  .ai-tab-btn { padding: 8px 18px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; background: transparent; color: rgba(0,0,0,0.45); transition: all .2s; font-family: inherit; }
+  .ai-tab-btn.active { background: #0a0a0a; color: #fff; }
+  .ai-tab-btn:hover:not(.active) { background: rgba(0,0,0,.05); color: rgba(0,0,0,.75); }
+
+  .ai-tab-panel { display: none; }
+  .ai-tab-panel.active { display: block; }
+
+  /* AI analysis grid */
+  .ai-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .ai-grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+  .span2 { grid-column: span 2; }
+
+  .ai-card { background: #ffffff; border: 1px solid #e8e8e8; border-radius: 12px; overflow: hidden; }
+  .ai-c-head { padding: 16px 20px 12px; border-bottom: 1px solid #f0f0f0; }
+  .ai-eyebrow { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: rgba(0,0,0,.35); margin-bottom: 4px; }
+  .ai-c-title { font-size: 14px; font-weight: 700; color: #0a0a0a; margin-bottom: 3px; }
+  .ai-c-sub   { font-size: 11px; color: rgba(0,0,0,.4); line-height: 1.5; }
+  .ai-c-body  { padding: 16px 20px 18px; }
+
+  /* Controls */
+  .ctrl-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .ctrl-lbl { font-size: 11px; font-weight: 600; color: #333; white-space: nowrap; }
+  .ctrl-slider { -webkit-appearance: none; appearance: none; flex: 1; min-width: 80px; height: 3px; border-radius: 2px; background: #e0e0e0; outline: none; cursor: pointer; }
+  .ctrl-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #0a0a0a; cursor: pointer; }
+  .ctrl-val { font-size: 11px; font-weight: 700; color: #0a0a0a; min-width: 32px; font-family: monospace; }
+  .ctrl-btn-row { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .ctrl-btn { padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; border: 1px solid #e0e0e0; background: #f8f8f8; color: #333; cursor: pointer; font-family: inherit; transition: all .15s; }
+  .ctrl-btn:hover { background: #efefef; }
+  .ctrl-btn.sel  { background: #0a0a0a; border-color: #0a0a0a; color: #fff; }
+  .ctrl-select { padding: 4px 8px; border-radius: 6px; font-size: 11px; border: 1px solid #e0e0e0; background: #f8f8f8; color: #333; font-family: inherit; cursor: pointer; }
+
+  /* Mini KPI */
+  .mini-kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .mini-kpi { background: #f8f8f8; border: 1px solid #ebebeb; border-radius: 8px; padding: 9px; text-align: center; }
+  .mini-kpi-v { font-size: 18px; font-weight: 800; color: #0a0a0a; letter-spacing: -0.02em; }
+  .mini-kpi-l { font-size: 9px; color: rgba(0,0,0,.4); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+
+  /* Find boxes */
+  .find { display: flex; gap: 9px; align-items: flex-start; background: #f8f8f8; border: 1px solid #ebebeb; border-radius: 8px; padding: 9px 11px; margin-bottom: 7px; }
+  .fn  { width: 20px; height: 20px; border-radius: 50%; background: rgba(53,201,149,.15); color: #1e8a5e; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; flex-shrink: 0; font-family: monospace; margin-top: 1px; }
+  .fn-w { background: rgba(239,176,93,.15); color: #a06010; }
+  .ft  { font-size: 11.5px; color: #1a1a1a; line-height: 1.6; }
+  .ft strong { font-weight: 700; }
+
+  /* Cluster table */
+  .c-tbl { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .c-tbl th { background: #f3f3f3; color: #333; font-weight: 700; font-size: 9px; text-transform: uppercase; letter-spacing: .05em; padding: 7px 10px; text-align: left; }
+  .c-tbl td { padding: 7px 10px; color: #1a1a1a; border-top: 1px solid #f0f0f0; }
+  .c-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+
+  /* Sim stats */
+  .sim-stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .sim-stat { background: #f8f8f8; border: 1px solid #ebebeb; border-radius: 8px; padding: 10px; text-align: center; }
+  .sim-stat-v { font-size: 15px; font-weight: 800; color: #0a0a0a; }
+  .sim-stat-l { font-size: 9px; color: rgba(0,0,0,.4); text-transform: uppercase; letter-spacing: .05em; margin-top: 2px; }
+
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; }
+  .leg-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: rgba(0,0,0,.5); }
+  .leg-dot  { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .leg-line { width: 18px; height: 2px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-title">Sales Dashboard</div>
+    <div class="sidebar-sub">2026.01 — 2026.03</div>
+
+    <div class="sidebar-label">분석 보기</div>
+    <div class="sidebar-item active" onclick="showSection('overview',this)">Overview</div>
+    <div class="sidebar-item" onclick="showSection('category',this)">Category</div>
+    <div class="sidebar-item" onclick="showSection('region',this)">Region</div>
+    <div class="sidebar-item" onclick="showSection('ab',this)">A/B Test</div>
+    <div class="sidebar-item ai-item" onclick="showSection('ai',this)">✦ AI 분석</div>
+
+    <hr class="sidebar-divider">
+
+    <div class="sidebar-label">Quick Stats</div>
+    <div class="sidebar-kpi">
+      <div class="sidebar-kpi-label">Total Revenue</div>
+      <div class="sidebar-kpi-value">$397K</div>
+      <div class="sidebar-kpi-note">3-month total</div>
+    </div>
+    <div class="sidebar-kpi">
+      <div class="sidebar-kpi-label">Margin</div>
+      <div class="sidebar-kpi-value">30.6%</div>
+      <div class="sidebar-kpi-note">Furniture 10.7% 주의</div>
+    </div>
+    <div class="sidebar-kpi">
+      <div class="sidebar-kpi-label">Pipeline</div>
+      <div class="sidebar-kpi-value">7/7</div>
+      <div class="sidebar-kpi-note">All stages complete</div>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <main class="main">
+
+    <!-- ════════ SECTION: OVERVIEW ════════ -->
+    <div class="section active" id="section-overview">
+      <div class="page-header">
+        <div class="page-title">수익성 분석 대시보드</div>
+        <div class="page-sub">Furniture 할인 압력과 Technology 의존도 — 2개 레버로 마진을 개선할 수 있습니다</div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="card">
+          <div class="card-title">Total Revenue</div>
+          <div class="kpi-value">$397K</div>
+          <div class="kpi-note">3개월 누적 / 기간: Jan–Mar 2026</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Gross Profit</div>
+          <div class="kpi-value">$121K</div>
+          <div class="kpi-note">Revenue - Cost / 마진율 30.6%</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Furniture 마진율 — 문제인가?</div>
+          <div class="kpi-value">10.7%</div>
+          <span class="kpi-delta bad">Technology 대비 -24%p</span>
+          <div class="kpi-note">평균 할인율 17.7% → 마진 잠식</div>
+        </div>
+        <div class="card">
+          <div class="card-title">B그룹 전환율 우위</div>
+          <div class="kpi-value">+1.1%p</div>
+          <span class="kpi-delta good">B 13.1% vs A 12.0%</span>
+          <div class="kpi-note">B그룹 할인율은 오히려 낮음 (7.8%)</div>
+        </div>
+      </div>
+
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">카테고리별 매출 vs 마진율</div>
+          <div class="chart-desc">막대 = 매출 규모 / 점선 = 마진율. Furniture는 매출 3위지만 마진이 현저히 낮습니다.</div>
+          <svg width="100%" height="200" viewBox="0 0 360 200">
+            <rect x="30" y="20" width="80" height="130" fill="#0a0a0a" rx="4"/>
+            <text x="70" y="165" text-anchor="middle" font-size="11" fill="#666">Technology</text>
+            <text x="70" y="15" text-anchor="middle" font-size="11" font-weight="700" fill="#0a0a0a">$207K</text>
+            <rect x="140" y="84" width="80" height="66" fill="#555" rx="4"/>
+            <text x="180" y="165" text-anchor="middle" font-size="11" fill="#666">Office Sup.</text>
+            <text x="180" y="79" text-anchor="middle" font-size="11" font-weight="700" fill="#0a0a0a">$113K</text>
+            <rect x="250" y="102" width="80" height="48" fill="#aaa" rx="4"/>
+            <text x="290" y="165" text-anchor="middle" font-size="11" fill="#666">Furniture</text>
+            <text x="290" y="97" text-anchor="middle" font-size="11" font-weight="700" fill="#0a0a0a">$77K</text>
+            <circle cx="70" cy="55" r="5" fill="#35c995"/>
+            <circle cx="180" cy="52" r="5" fill="#35c995"/>
+            <circle cx="290" cy="143" r="5" fill="#ef7d86"/>
+            <line x1="70" y1="55" x2="180" y2="52" stroke="#35c995" stroke-width="2" stroke-dasharray="4,3"/>
+            <line x1="180" y1="52" x2="290" y2="143" stroke="#ef7d86" stroke-width="2" stroke-dasharray="4,3"/>
+            <text x="70" y="46" text-anchor="middle" font-size="10" fill="#1e8a5e" font-weight="600">35%</text>
+            <text x="180" y="43" text-anchor="middle" font-size="10" fill="#1e8a5e" font-weight="600">36%</text>
+            <text x="290" y="134" text-anchor="middle" font-size="10" fill="#c44d58" font-weight="600">11%</text>
+            <rect x="30" y="182" width="10" height="10" fill="#555" rx="2"/>
+            <text x="44" y="191" font-size="10" fill="#666">매출</text>
+            <circle cx="95" cy="187" r="4" fill="#35c995"/>
+            <text x="103" y="191" font-size="10" fill="#666">마진율</text>
+          </svg>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title">월별 매출 구성 — 3월 급락은 Technology 문제</div>
+          <div class="chart-desc">Technology(진한색) vs 기타 카테고리(연한색). 기타는 오히려 증가 중.</div>
+          <svg width="100%" height="200" viewBox="0 0 360 200">
+            <rect x="50" y="92" width="70" height="58" fill="#ccc" rx="4"/>
+            <rect x="50" y="17" width="70" height="75" fill="#0a0a0a" rx="4"/>
+            <text x="85" y="165" text-anchor="middle" font-size="11" fill="#666">Jan</text>
+            <text x="85" y="12" text-anchor="middle" font-size="10" fill="#0a0a0a" font-weight="600">$119K</text>
+            <rect x="145" y="101" width="70" height="49" fill="#ccc" rx="4"/>
+            <rect x="145" y="17" width="70" height="84" fill="#0a0a0a" rx="4"/>
+            <text x="180" y="165" text-anchor="middle" font-size="11" fill="#666">Feb</text>
+            <text x="180" y="12" text-anchor="middle" font-size="10" fill="#0a0a0a" font-weight="600">$164K</text>
+            <rect x="240" y="50" width="70" height="100" fill="#ccc" rx="4"/>
+            <rect x="240" y="20" width="70" height="30" fill="#ef7d86" rx="4"/>
+            <text x="275" y="165" text-anchor="middle" font-size="11" fill="#666">Mar</text>
+            <text x="275" y="15" text-anchor="middle" font-size="10" fill="#c44d58" font-weight="600">$114K</text>
+            <text x="275" y="180" text-anchor="middle" font-size="9" fill="#c44d58">Tech -77% MoM</text>
+            <rect x="30" y="182" width="10" height="10" fill="#0a0a0a" rx="2"/>
+            <text x="44" y="191" font-size="10" fill="#666">Technology</text>
+            <rect x="120" y="182" width="10" height="10" fill="#ccc" rx="2"/>
+            <text x="134" y="191" font-size="10" fill="#666">Others</text>
+          </svg>
+        </div>
+      </div>
+
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">A/B 테스트 — 할인을 줄인 B가 전환율도 높다</div>
+          <div class="chart-desc">할인율이 낮은 B그룹이 전환율과 마진 모두 우위. (표본 주의)</div>
+          <svg width="100%" height="180" viewBox="0 0 340 180">
+            <text x="20" y="25" font-size="10" fill="#888">전환율 (CVR)</text>
+            <rect x="20" y="32" width="144" height="22" fill="#ccc" rx="3"/>
+            <text x="169" y="47" font-size="11" fill="#888">12.0% (A)</text>
+            <rect x="20" y="60" width="157" height="22" fill="#35c995" rx="3" opacity="0.7"/>
+            <text x="182" y="75" font-size="11" fill="#1e8a5e" font-weight="600">13.1% (B) ▲</text>
+            <text x="20" y="105" font-size="10" fill="#888">마진율</text>
+            <rect x="20" y="112" width="118" height="22" fill="#ccc" rx="3"/>
+            <text x="143" y="127" font-size="11" fill="#888">29.5% (A)</text>
+            <rect x="20" y="140" width="126" height="22" fill="#35c995" rx="3" opacity="0.7"/>
+            <text x="151" y="155" font-size="11" fill="#1e8a5e" font-weight="600">31.6% (B) ▲</text>
+            <text x="230" y="90" font-size="10" fill="#888">평균 할인율</text>
+            <text x="230" y="108" font-size="13" fill="#888">A: 9.2%</text>
+            <text x="230" y="128" font-size="13" fill="#1e8a5e" font-weight="700">B: 7.8%</text>
+            <text x="230" y="145" font-size="10" fill="#1e8a5e">↓ 1.4%p 낮음</text>
+          </svg>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title">지역별 마진율 — Europe이 낮은 이유</div>
+          <div class="chart-desc">Europe 마진 10.7%는 Furniture 편중 때문. 매출 규모와 마진율을 함께 봐야 합니다.</div>
+          <svg width="100%" height="180" viewBox="0 0 340 180">
+            <text x="20" y="32" font-size="11" fill="#333">Asia Pacific</text>
+            <rect x="130" y="18" width="146" height="18" fill="#35c995" rx="3" opacity="0.8"/>
+            <text x="280" y="31" font-size="11" fill="#1e8a5e" font-weight="600">36.6%</text>
+            <text x="20" y="68" font-size="11" fill="#333">Latin America</text>
+            <rect x="130" y="54" width="140" height="18" fill="#35c995" rx="3" opacity="0.6"/>
+            <text x="274" y="67" font-size="11" fill="#1e8a5e" font-weight="600">35.0%</text>
+            <text x="20" y="104" font-size="11" fill="#333">North America</text>
+            <rect x="130" y="90" width="139" height="18" fill="#35c995" rx="3" opacity="0.5"/>
+            <text x="273" y="103" font-size="11" fill="#1e8a5e" font-weight="600">34.7%</text>
+            <text x="20" y="140" font-size="11" fill="#333">Europe</text>
+            <rect x="130" y="126" width="43" height="18" fill="#ef7d86" rx="3"/>
+            <text x="177" y="139" font-size="11" fill="#c44d58" font-weight="700">10.7%</text>
+            <text x="230" y="139" font-size="10" fill="#c44d58">← Furniture 편중</text>
+            <text x="20" y="168" font-size="10" fill="#888">막대 길이 = 마진율 (매출 규모 아님)</text>
+          </svg>
+        </div>
+      </div>
+
+      <div class="insight-card">
+        <div class="insight-title">핵심 인사이트 — 이 대시보드에서 해야 할 결정</div>
+        <div class="insight-item">
+          <div class="insight-num">1</div>
+          <div class="insight-text"><strong>Furniture 할인 정책을 재검토하세요.</strong> 평균 할인율 17.7%가 마진을 10.7%까지 끌어내리고 있습니다. B그룹 데이터는 할인을 줄여도 전환율이 떨어지지 않을 수 있음을 시사합니다.</div>
+        </div>
+        <div class="insight-item">
+          <div class="insight-num">2</div>
+          <div class="insight-text"><strong>Technology 매출 파이프라인을 점검하세요.</strong> 3월 급락(-77% MoM)은 구조적 신호일 수 있습니다. 4월 회복 여부로 계절성 vs 구조 문제를 판단해야 합니다.</div>
+        </div>
+        <div class="insight-item">
+          <div class="insight-num">3</div>
+          <div class="insight-text"><strong>B그룹 조건을 더 큰 표본으로 재실험하세요.</strong> 현재 데이터(24행)로는 통계적 확정 불가. 방향성은 있으나 의사결정 전 검증 필요.</div>
+        </div>
+      </div>
+
+      <div class="action-grid">
+        <div class="action-card">
+          <div class="action-priority p1">P1 — 즉시</div>
+          <div class="action-text">Furniture 할인 15%p 이상 거래 검토</div>
+          <div class="action-detail">Chair/Desk 고할인 건 승인 프로세스 추가. 목표: 평균 할인율 10%p 이하로.</div>
+        </div>
+        <div class="action-card">
+          <div class="action-priority p2">P2 — 2주 내</div>
+          <div class="action-text">B그룹 조건으로 재실험 설계</div>
+          <div class="action-detail">표본 100건 이상 확보 후 A/B 전환율 차이 유의성 검정.</div>
+        </div>
+        <div class="action-card">
+          <div class="action-priority p3">P3 — 모니터링</div>
+          <div class="action-text">Technology 4월 파이프라인 추적</div>
+          <div class="action-detail">4월 Technology 매출 $50K 이하면 채널 전략 재검토 필요.</div>
+        </div>
+      </div>
+    </div><!-- /overview -->
+
+    <!-- ════════ SECTION: CATEGORY ════════ -->
+    <div class="section" id="section-category">
+      <div class="page-header">
+        <div class="page-title">카테고리 분석</div>
+        <div class="page-sub">Technology · Office Supplies · Furniture — 3개 카테고리의 매출·마진 구조</div>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-card full">
+          <div class="chart-title">카테고리별 매출·마진·할인율 종합</div>
+          <div class="chart-desc">Technology가 매출의 52%를 차지하지만, Furniture의 마진 압박이 전체 수익성을 끌어내립니다.</div>
+          <svg width="100%" height="220" viewBox="0 0 720 220">
+            <!-- headers -->
+            <text x="90" y="18" text-anchor="middle" font-size="11" font-weight="700" fill="#0a0a0a">Technology</text>
+            <text x="360" y="18" text-anchor="middle" font-size="11" font-weight="700" fill="#0a0a0a">Office Supplies</text>
+            <text x="630" y="18" text-anchor="middle" font-size="11" font-weight="700" fill="#c44d58">Furniture ⚠</text>
+            <!-- revenue bars -->
+            <rect x="30" y="25" width="120" height="100" fill="#0a0a0a" rx="4"/>
+            <rect x="300" y="75" width="120" height="50" fill="#555" rx="4"/>
+            <rect x="570" y="100" width="120" height="25" fill="#888" rx="4"/>
+            <text x="90" y="140" text-anchor="middle" font-size="12" font-weight="700" fill="#0a0a0a">$207K (52%)</text>
+            <text x="360" y="140" text-anchor="middle" font-size="12" font-weight="700" fill="#0a0a0a">$113K (28%)</text>
+            <text x="630" y="140" text-anchor="middle" font-size="12" font-weight="700" fill="#0a0a0a">$77K (19%)</text>
+            <!-- margin badges -->
+            <rect x="55" y="155" width="70" height="22" rx="4" fill="rgba(53,201,149,.15)"/>
+            <text x="90" y="170" text-anchor="middle" font-size="11" font-weight="700" fill="#1e8a5e">마진 35%</text>
+            <rect x="325" y="155" width="70" height="22" rx="4" fill="rgba(53,201,149,.15)"/>
+            <text x="360" y="170" text-anchor="middle" font-size="11" font-weight="700" fill="#1e8a5e">마진 36%</text>
+            <rect x="595" y="155" width="70" height="22" rx="4" fill="rgba(239,125,134,.15)"/>
+            <text x="630" y="170" text-anchor="middle" font-size="11" font-weight="700" fill="#c44d58">마진 10.7%</text>
+            <!-- discount -->
+            <text x="90" y="195" text-anchor="middle" font-size="10" fill="#888">평균 할인 7.5%</text>
+            <text x="360" y="195" text-anchor="middle" font-size="10" fill="#888">평균 할인 11.3%</text>
+            <text x="630" y="195" text-anchor="middle" font-size="10" fill="#c44d58" font-weight="600">평균 할인 17.7% ▲</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ SECTION: REGION ════════ -->
+    <div class="section" id="section-region">
+      <div class="page-header">
+        <div class="page-title">지역별 분석</div>
+        <div class="page-sub">North America · Europe · Asia Pacific · Latin America</div>
+      </div>
+      <div class="kpi-grid">
+        <div class="card"><div class="card-title">North America</div><div class="kpi-value">$170K</div><span class="kpi-delta good">마진 34.7%</span></div>
+        <div class="card"><div class="card-title">Europe</div><div class="kpi-value">$112K</div><span class="kpi-delta bad">마진 10.7%</span><div class="kpi-note">Furniture 편중</div></div>
+        <div class="card"><div class="card-title">Asia Pacific</div><div class="kpi-value">$68K</div><span class="kpi-delta good">마진 36.6%</span></div>
+        <div class="card"><div class="card-title">Latin America</div><div class="kpi-value">$47K</div><span class="kpi-delta good">마진 35.0%</span></div>
+      </div>
+      <div class="insight-card">
+        <div class="insight-title">Europe 마진 저하의 실체</div>
+        <div class="insight-item"><div class="insight-num">!</div><div class="insight-text">Europe 10.7% 마진의 원인은 <strong>지역 특성이 아니라 Furniture 거래 편중</strong>입니다. Europe 매출의 68%가 Furniture에서 발생. 다른 지역에서 같은 Furniture 비중이면 동일하게 나타납니다.</div></div>
+      </div>
+    </div>
+
+    <!-- ════════ SECTION: A/B TEST ════════ -->
+    <div class="section" id="section-ab">
+      <div class="page-header">
+        <div class="page-title">A/B 테스트 분석</div>
+        <div class="page-sub">B그룹(저할인)이 전환율과 마진 모두 우위 — 단, 표본 24행으로 통계 확정 불가</div>
+      </div>
+      <div class="kpi-grid">
+        <div class="card"><div class="card-title">A그룹 전환율</div><div class="kpi-value">12.0%</div><div class="kpi-note">평균 할인 9.2%</div></div>
+        <div class="card"><div class="card-title">B그룹 전환율</div><div class="kpi-value">13.1%</div><span class="kpi-delta good">+1.1%p</span><div class="kpi-note">평균 할인 7.8%</div></div>
+        <div class="card"><div class="card-title">A그룹 마진</div><div class="kpi-value">29.5%</div></div>
+        <div class="card"><div class="card-title">B그룹 마진</div><div class="kpi-value">31.6%</div><span class="kpi-delta good">+2.1%p</span></div>
+      </div>
+      <div class="insight-card">
+        <div class="insight-title">해석 주의사항</div>
+        <div class="insight-item"><div class="insight-num">!</div><div class="insight-text">표본 24행(그룹당 12건)은 통계적 유의성 검정에 부족합니다. <strong>방향성 참고 가능, 정책 전환 근거로는 사용 불가.</strong> n≥100 재실험 권장.</div></div>
+        <div class="insight-item"><div class="insight-num">✓</div><div class="insight-text">할인을 줄인 B그룹이 전환율도 높다는 방향은 <strong>"할인이 구매를 유도한다"는 통념에 반하는 흥미로운 신호</strong>입니다.</div></div>
+      </div>
+    </div>
+
+    <!-- ════════ SECTION: AI 분석 ════════ -->
+    <div class="section" id="section-ai">
+      <div class="page-header">
+        <div class="page-title">AI 분석</div>
+        <div class="page-sub">시계열 예측 · 고객 세그먼트 · 할인 시뮬레이션 — sample_sales.csv 기반 순수 JS 구현</div>
+      </div>
+
+      <div class="ai-tab-nav">
+        <button class="ai-tab-btn active" onclick="switchAiTab('ts',this)">📈 시계열 예측</button>
+        <button class="ai-tab-btn" onclick="switchAiTab('seg',this)">🔵 고객 세그먼트</button>
+        <button class="ai-tab-btn" onclick="switchAiTab('sim',this)">🎲 할인 시뮬레이션</button>
+      </div>
+
+      <!-- ── AI TAB: 시계열 예측 ── -->
+      <div class="ai-tab-panel active" id="ai-ts">
+        <div class="ai-grid">
+
+          <div class="ai-card span2">
+            <div class="ai-c-head">
+              <div class="ai-eyebrow">Holt Double Exponential Smoothing · 4–6월 예측</div>
+              <div class="ai-c-title">카테고리별 매출 시계열 예측</div>
+              <div class="ai-c-sub">Jan–Mar 2026 실제 데이터로 학습. α·β 슬라이더로 파라미터 조정. 음영 = 80% 신뢰 구간.</div>
+            </div>
+            <div class="ai-c-body">
+              <div class="ctrl-btn-row" id="ts-cat-btns">
+                <button class="ctrl-btn sel" onclick="tsSelectCat('all',this)">전체</button>
+                <button class="ctrl-btn" onclick="tsSelectCat('tech',this)">Technology</button>
+                <button class="ctrl-btn" onclick="tsSelectCat('furn',this)">Furniture</button>
+                <button class="ctrl-btn" onclick="tsSelectCat('office',this)">Office Supplies</button>
+              </div>
+              <div class="ctrl-row">
+                <span class="ctrl-lbl">수준 α</span>
+                <input class="ctrl-slider" type="range" min="1" max="9" value="3" id="alphaSlider" oninput="tsUpdateParam()">
+                <span class="ctrl-val" id="alphaVal">0.3</span>
+                <span class="ctrl-lbl" style="margin-left:12px">추세 β</span>
+                <input class="ctrl-slider" type="range" min="1" max="9" value="2" id="betaSlider" oninput="tsUpdateParam()">
+                <span class="ctrl-val" id="betaVal">0.2</span>
+              </div>
+              <div class="legend" id="ts-legend"></div>
+              <svg id="ts-svg" width="100%" viewBox="0 0 700 260" preserveAspectRatio="xMidYMid meet" style="display:block"></svg>
+            </div>
+          </div>
+
+          <div class="ai-card">
+            <div class="ai-c-head">
+              <div class="ai-eyebrow">모델 설명</div>
+              <div class="ai-c-title">왜 Holt인가?</div>
+            </div>
+            <div class="ai-c-body">
+              <div class="find"><div class="fn">α</div><div class="ft"><strong>수준 평활:</strong> 높을수록 최근 값 반영 비중 증가. 0.3 권장.</div></div>
+              <div class="find"><div class="fn">β</div><div class="ft"><strong>추세 평활:</strong> 기울기 변화 속도 제어. 낮으면 안정적 추세.</div></div>
+              <div class="find"><div class="fn fn-w">!</div><div class="ft">ARIMA는 24개 이상 관측값 필요. 3개월 데이터엔 Holt가 적합.</div></div>
+            </div>
+          </div>
+
+          <div class="ai-card">
+            <div class="ai-c-head">
+              <div class="ai-eyebrow">4월 예측값</div>
+              <div class="ai-c-title">Next Month Forecast</div>
+            </div>
+            <div class="ai-c-body">
+              <div class="mini-kpi-row">
+                <div class="mini-kpi"><div class="mini-kpi-v" id="ts-f-total">—</div><div class="mini-kpi-l">전체</div></div>
+                <div class="mini-kpi"><div class="mini-kpi-v" id="ts-f-tech">—</div><div class="mini-kpi-l">Tech</div></div>
+              </div>
+              <div class="mini-kpi-row">
+                <div class="mini-kpi"><div class="mini-kpi-v" id="ts-f-furn">—</div><div class="mini-kpi-l">Furniture</div></div>
+                <div class="mini-kpi"><div class="mini-kpi-v" id="ts-f-office">—</div><div class="mini-kpi-l">Office</div></div>
+              </div>
+              <div class="find" id="ts-finding-box"><div class="fn fn-w">!</div><div class="ft" id="ts-finding">계산 중...</div></div>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /ai-ts -->
+
+      <!-- ── AI TAB: 고객 세그먼트 ── -->
+      <div class="ai-tab-panel" id="ai-seg">
+        <div class="ai-grid">
+
+          <div class="ai-card span2">
+            <div class="ai-c-head">
+              <div class="ai-eyebrow">K-Means Clustering · 순수 JS 구현</div>
+              <div class="ai-c-title">거래 세그먼트 분석</div>
+              <div class="ai-c-sub">매출·마진율·할인율 기준 군집화. 24건 거래 데이터. 점 안 글자 = 카테고리 이니셜(T/F/O).</div>
+            </div>
+            <div class="ai-c-body">
+              <div class="ctrl-row">
+                <span class="ctrl-lbl">클러스터 수 K</span>
+                <input class="ctrl-slider" type="range" min="2" max="5" value="3" id="kSlider" oninput="segUpdateK()">
+                <span class="ctrl-val" id="kVal">3</span>
+                <span class="ctrl-lbl" style="margin-left:12px">X축</span>
+                <select class="ctrl-select" id="xAxis" onchange="runKMeans()">
+                  <option value="revenue">매출</option>
+                  <option value="margin">마진율</option>
+                  <option value="discount">할인율</option>
+                </select>
+                <span class="ctrl-lbl">Y축</span>
+                <select class="ctrl-select" id="yAxis" onchange="runKMeans()">
+                  <option value="margin">마진율</option>
+                  <option value="revenue">매출</option>
+                  <option value="discount">할인율</option>
+                </select>
+                <button class="ctrl-btn" onclick="runKMeans()">재실행</button>
+              </div>
+              <svg id="seg-svg" width="100%" viewBox="0 0 700 280" preserveAspectRatio="xMidYMid meet" style="display:block"></svg>
+            </div>
+          </div>
+
+          <div class="ai-card">
+            <div class="ai-c-head">
+              <div class="ai-eyebrow">클러스터 프로파일</div>
+              <div class="ai-c-title">군집 특성</div>
+            </div>
+            <div class="ai-c-body">
+              <table class="c-tbl">
+                <thead><tr><th>클러스터</th><th>건수</th><th>평균 매출</th><th>마진율</th><th>할인율</th></tr></thead>
+                <tbody id="cluster-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="ai-card">
+            <div class="ai-c-head">
+              <div class="ai-eyebrow">자동 인사이트</div>
+              <div class="ai-c-title">세그먼트 해석</div>
+            </div>
+            <div class="ai-c-body" id="seg-insights">
+              <div class="find"><div class="fn">—</div><div class="ft">분석 실행 중...</div></div>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /ai-seg -->
+
+      <!-- ── AI TAB: 할인 시뮬레이션 ── -->
+      <div class="ai-tab-panel" id="ai-sim">
+        <div class="ai-grid">
+
+          <div class="ai-card span2">
+            <div class="ai-c-head">
+              <div class="ai-eyebrow">Monte Carlo Simulation · 1,000회 반복</div>
+              <div class="ai-c-title">Furniture 할인율 조정 → 이익 변화 분포</div>
+              <div class="ai-c-sub">할인율을 낮추면 이익이 얼마나 증가할까? 수요 탄력성 불확실성을 반영해 분포로 추정.</div>
+            </div>
+            <div class="ai-c-body">
+              <div class="ctrl-row">
+                <span class="ctrl-lbl">목표 할인율</span>
+                <input class="ctrl-slider" type="range" min="5" max="25" value="10" id="discSlider" oninput="simUpdate()">
+                <span class="ctrl-val" id="discVal">10%</span>
+                <span class="ctrl-lbl" style="margin-left:12px">수요 탄력성</span>
+                <input class="ctrl-slider" type="range" min="1" max="20" value="8" id="elasSlider" oninput="simUpdate()">
+                <span class="ctrl-val" id="elasVal">-0.8</span>
+                <span class="ctrl-lbl" style="margin-left:12px">불확실성 σ</span>
+                <input class="ctrl-slider" type="range" min="1" max="30" value="10" id="sigmaSlider" oninput="simUpdate()">
+                <span class="ctrl-val" id="sigmaVal">10%</span>
+              </div>
+              <svg id="sim-svg" width="100%" viewBox="0 0 700 220" preserveAspectRatio="xMidYMid meet" style="display:block"></svg>
+              <div class="sim-stat-row" id="sim-stats"></div>
+            </div>
+          </div>
+
+          <div class="ai-card">
+            <div class="ai-c-head">
+              <div class="ai-eyebrow">베이스라인</div>
+              <div class="ai-c-title">Furniture 현황</div>
+            </div>
+            <div class="ai-c-body">
+              <div class="mini-kpi-row">
+                <div class="mini-kpi"><div class="mini-kpi-v">$130K</div><div class="mini-kpi-l">Furniture 매출</div></div>
+                <div class="mini-kpi"><div class="mini-kpi-v">10.7%</div><div class="mini-kpi-l">마진율</div></div>
+              </div>
+              <div class="mini-kpi-row">
+                <div class="mini-kpi"><div class="mini-kpi-v">$13.9K</div><div class="mini-kpi-l">현재 이익</div></div>
+                <div class="mini-kpi"><div class="mini-kpi-v">17.7%</div><div class="mini-kpi-l">평균 할인율</div></div>
+              </div>
+              <div class="find"><div class="fn fn-w">!</div><div class="ft">Gross margin before discount: ~26%. 할인 1%p 축소 → 매출 소폭 감소, 마진 더 큰 폭 회복.</div></div>
+            </div>
+          </div>
+
+          <div class="ai-card">
+            <div class="ai-c-head">
+              <div class="ai-eyebrow">모델 가정</div>
+              <div class="ai-c-title">시뮬레이션 로직</div>
+            </div>
+            <div class="ai-c-body">
+              <div class="find"><div class="fn">1</div><div class="ft"><strong>수요:</strong> 할인 1%p 감소 → 방문자 탄력성만큼 감소.</div></div>
+              <div class="find"><div class="fn">2</div><div class="ft"><strong>마진:</strong> 할인 감소분 × (1 − 원가율) → 이익 귀속.</div></div>
+              <div class="find"><div class="fn">3</div><div class="ft"><strong>노이즈:</strong> 정규분포 σ 추가. σ↑ = 분포 넓어짐.</div></div>
+              <div class="find"><div class="fn fn-w">!</div><div class="ft">단순화 모델. 실사 전 A/B 검증 필수.</div></div>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /ai-sim -->
+
+    </div><!-- /section-ai -->
+
+  </main>
+</div>
+
+<script>
+// ─── SECTION NAV ───
+function showSection(name, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
+  document.getElementById('section-' + name).classList.add('active');
+  if (el) el.classList.add('active');
+  if (name === 'ai') { initAI(); }
+}
+
+// ─── AI TAB NAV ───
+function switchAiTab(name, btn) {
+  document.querySelectorAll('.ai-tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.ai-tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('ai-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'ts')  drawTS();
+  if (name === 'seg') runKMeans();
+  if (name === 'sim') runMonteCarlo();
+}
+
+let aiInited = false;
+function initAI() {
+  if (aiInited) return;
+  aiInited = true;
+  drawTS();
+  runKMeans();
+  runMonteCarlo();
+}
+
+// ─── DATA ───
+const MONTHLY = {
+  tech:   [89000, 98000, 20000],
+  furn:   [52000, 46000, 32000],
+  office: [21000, 24000, 15000],
+};
+const MONTHS_ALL = ['Jan','Feb','Mar','Apr','May','Jun'];
+const CAT_COLORS = { tech:'#4fb799', furn:'#e87d6e', office:'#7b8fcf' };
+
+const TRANSACTIONS = [
+  { revenue:48.3, margin:37.2, discount:7,  cat:'T' },
+  { revenue:42.1, margin:35.8, discount:8,  cat:'T' },
+  { revenue:38.2, margin:36.5, discount:6,  cat:'T' },
+  { revenue:35.5, margin:34.1, discount:9,  cat:'T' },
+  { revenue:29.8, margin:35.0, discount:7,  cat:'T' },
+  { revenue:13.1, margin:33.5, discount:8,  cat:'T' },
+  { revenue:32.4, margin:8.2,  discount:35, cat:'F' },
+  { revenue:28.9, margin:9.5,  discount:35, cat:'F' },
+  { revenue:24.6, margin:11.3, discount:21, cat:'F' },
+  { revenue:22.1, margin:10.8, discount:18, cat:'F' },
+  { revenue:18.7, margin:12.1, discount:17, cat:'F' },
+  { revenue:16.3, margin:11.9, discount:16, cat:'F' },
+  { revenue:13.2, margin:10.2, discount:20, cat:'F' },
+  { revenue:11.8, margin:9.8,  discount:22, cat:'F' },
+  { revenue:14.2, margin:26.3, discount:10, cat:'O' },
+  { revenue:12.8, margin:25.1, discount:12, cat:'O' },
+  { revenue:11.5, margin:27.0, discount:9,  cat:'O' },
+  { revenue:9.4,  margin:24.8, discount:13, cat:'O' },
+  { revenue:8.2,  margin:25.5, discount:11, cat:'O' },
+  { revenue:6.7,  margin:23.9, discount:14, cat:'O' },
+  { revenue:21.0, margin:14.2, discount:15, cat:'F' },
+  { revenue:19.5, margin:13.8, discount:14, cat:'F' },
+  { revenue:31.0, margin:35.5, discount:8,  cat:'T' },
+  { revenue:26.5, margin:34.9, discount:9,  cat:'T' },
+];
+
+const CLUSTER_COLORS = ['#e87d6e','#4fb799','#7b8fcf','#e8b84b','#b07bc9'];
+
+function fmtK(v) {
+  const a = Math.abs(v);
+  const sign = v < 0 ? '-' : '+';
+  if (a >= 1000) return (v < 0 ? '-' : '') + '$' + (a/1000).toFixed(0) + 'K';
+  return (v < 0 ? '-$' : '$') + a.toFixed(0);
+}
+function fmtKAbs(v) {
+  if (Math.abs(v) >= 1000) return '$' + (v/1000).toFixed(0) + 'K';
+  return '$' + v.toFixed(0);
+}
+
+// ─── TIME SERIES ───
+let tsAlpha = 0.3, tsBeta = 0.2, tsCat = 'all';
+
+function holt(data, alpha, beta, steps) {
+  let l = data[0], b = data[1] - data[0];
+  const fitted = [];
+  for (let i = 0; i < data.length; i++) {
+    const lp = l, bp = b;
+    l = alpha * data[i] + (1 - alpha) * (lp + bp);
+    b = beta * (l - lp) + (1 - beta) * bp;
+    fitted.push(l + b);
+  }
+  const fc = [];
+  for (let h = 1; h <= steps; h++) fc.push(Math.max(0, l + b * h));
+  const rmse = Math.sqrt(fitted.reduce((s, f, i) => s + (data[i] - f) ** 2, 0) / fitted.length);
+  return { fc, fitted, rmse };
+}
+
+function tsUpdateParam() {
+  tsAlpha = +document.getElementById('alphaSlider').value / 10;
+  tsBeta  = +document.getElementById('betaSlider').value / 10;
+  document.getElementById('alphaVal').textContent = tsAlpha.toFixed(1);
+  document.getElementById('betaVal').textContent  = tsBeta.toFixed(1);
+  drawTS();
+}
+
+function tsSelectCat(cat, btn) {
+  tsCat = cat;
+  document.querySelectorAll('#ts-cat-btns .ctrl-btn').forEach(b => b.classList.remove('sel'));
+  btn.classList.add('sel');
+  drawTS();
+}
+
+function drawTS() {
+  const svg = document.getElementById('ts-svg');
+  if (!svg) return;
+  const W = 700, H = 260;
+  const P = { l:55, r:25, t:18, b:40 };
+  const cw = W - P.l - P.r, ch = H - P.t - P.b;
+
+  const series = tsCat === 'all'
+    ? [{k:'tech',label:'Technology'},{k:'furn',label:'Furniture'},{k:'office',label:'Office Sup.'}]
+    : [{k: tsCat, label: tsCat==='tech'?'Technology':tsCat==='furn'?'Furniture':'Office Sup.'}];
+
+  const totalPts = 6; // 3 actual + 3 forecast
+  let allVals = [];
+  series.forEach(s => {
+    const h = holt(MONTHLY[s.k], tsAlpha, tsBeta, 3);
+    allVals.push(...MONTHLY[s.k], ...h.fc);
+  });
+  const yMax = Math.max(...allVals) * 1.18;
+
+  function px(i) { return P.l + (i / (totalPts - 1)) * cw; }
+  function py(v) { return P.t + ch - (v / yMax) * ch; }
+
+  let s = '';
+
+  // grid
+  [0, 0.25, 0.5, 0.75, 1].forEach(f => {
+    const v = yMax * f, y = py(v);
+    s += `<line x1="${P.l}" x2="${W-P.r}" y1="${y}" y2="${y}" stroke="#f0f0f0" stroke-width="1"/>`;
+    s += `<text x="${P.l-5}" y="${y+4}" text-anchor="end" fill="#aaa" font-size="9">${v>=1000?'$'+(v/1000).toFixed(0)+'K':'$'+v.toFixed(0)}</text>`;
+  });
+
+  // forecast zone
+  const xSplit = px(2);
+  s += `<rect x="${xSplit}" y="${P.t}" width="${W-P.r-xSplit}" height="${ch}" fill="rgba(79,183,153,.05)"/>`;
+  s += `<line x1="${xSplit}" x2="${xSplit}" y1="${P.t}" y2="${P.t+ch}" stroke="rgba(79,183,153,.4)" stroke-width="1" stroke-dasharray="4,3"/>`;
+  s += `<text x="${xSplit+5}" y="${P.t+11}" fill="rgba(79,183,153,.75)" font-size="9">▶ 예측</text>`;
+
+  // x labels
+  MONTHS_ALL.forEach((m, i) => {
+    s += `<text x="${px(i)}" y="${H-6}" text-anchor="middle" fill="#888" font-size="10">${m}</text>`;
+  });
+
+  series.forEach(sr => {
+    const col = CAT_COLORS[sr.k];
+    const data = MONTHLY[sr.k];
+    const h = holt(data, tsAlpha, tsBeta, 3);
+
+    // CI fill
+    const ciUpper = h.fc.map((v,i) => v + h.rmse * 1.3 * (i+1));
+    const ciLower = h.fc.map((v,i) => Math.max(0, v - h.rmse * 1.3 * (i+1)));
+    const ciPath =
+      ciUpper.map((v,i)=>`${px(3+i)},${py(v)}`).join(' ') + ' ' +
+      ciLower.map((v,i)=>`${px(5-i)},${py(v)}`).join(' ');
+    s += `<polygon points="${ciPath}" fill="${col}" opacity="0.1"/>`;
+
+    // actual line
+    s += `<path d="${data.map((v,i)=>(i?'L':'M')+px(i)+','+py(v)).join('')}" fill="none" stroke="${col}" stroke-width="2.5"/>`;
+
+    // forecast dashed
+    s += `<path d="M${px(2)},${py(data[2])}${h.fc.map((v,i)=>`L${px(3+i)},${py(v)}`).join('')}" fill="none" stroke="${col}" stroke-width="2" stroke-dasharray="5,3"/>`;
+
+    // actual dots
+    data.forEach((v,i) => { s += `<circle cx="${px(i)}" cy="${py(v)}" r="4" fill="${col}"/>`; });
+
+    // forecast dots (hollow)
+    h.fc.forEach((v,i) => {
+      s += `<circle cx="${px(3+i)}" cy="${py(v)}" r="4" fill="white" stroke="${col}" stroke-width="2"/>`;
+    });
+  });
+
+  svg.innerHTML = s;
+
+  // legend
+  document.getElementById('ts-legend').innerHTML = series.map(sr =>
+    `<div class="leg-item"><div class="leg-line" style="background:${CAT_COLORS[sr.k]}"></div>${sr.label}</div>`
+  ).join('') + `<div class="leg-item"><div style="width:18px;border-top:2px dashed #aaa"></div>예측</div>`;
+
+  // forecast summary
+  const all = {};
+  ['tech','furn','office'].forEach(k => { all[k] = holt(MONTHLY[k], tsAlpha, tsBeta, 3).fc[0]; });
+  const totalF = all.tech + all.furn + all.office;
+  document.getElementById('ts-f-total').textContent  = fmtKAbs(totalF);
+  document.getElementById('ts-f-tech').textContent   = fmtKAbs(all.tech);
+  document.getElementById('ts-f-furn').textContent   = fmtKAbs(all.furn);
+  document.getElementById('ts-f-office').textContent = fmtKAbs(all.office);
+
+  const techChange = ((all.tech - 20000) / 20000 * 100).toFixed(0);
+  document.getElementById('ts-finding').textContent =
+    `Technology 4월 예측: ${fmtKAbs(all.tech)} (3월 대비 ${techChange > 0 ? '+' : ''}${techChange}%). ` +
+    `Furniture 추세 하락 지속 중 — 할인 정책 변화 없으면 마진 추가 압박 예상.`;
+}
+
+// ─── K-MEANS ───
+let kK = 3;
+
+function segUpdateK() {
+  kK = +document.getElementById('kSlider').value;
+  document.getElementById('kVal').textContent = kK;
+  runKMeans();
+}
+
+function getField(t, f) {
+  return f === 'revenue' ? t.revenue : f === 'margin' ? t.margin : t.discount;
+}
+
+function runKMeans() {
+  const xF = document.getElementById('xAxis').value;
+  const yF = document.getElementById('yAxis').value;
+  const K = kK;
+  const pts = TRANSACTIONS.map(t => ({ x: getField(t, xF), y: getField(t, yF), cat: t.cat }));
+
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  const yMin = Math.min(...ys), yMax = Math.max(...ys);
+  const norm = pts.map(p => ({
+    nx: (p.x - xMin) / (xMax - xMin + 1e-9),
+    ny: (p.y - yMin) / (yMax - yMin + 1e-9),
+    orig: p
+  }));
+
+  // k-means++
+  let cens = [norm[Math.floor(Math.random() * norm.length)]];
+  while (cens.length < K) {
+    const ds = norm.map(p => Math.min(...cens.map(c => (p.nx-c.nx)**2 + (p.ny-c.ny)**2)));
+    const sum = ds.reduce((a,b)=>a+b,0);
+    let r = Math.random() * sum;
+    for (let i = 0; i < norm.length; i++) { r -= ds[i]; if (r <= 0) { cens.push(norm[i]); break; } }
+  }
+  cens = cens.map(c => ({ nx: c.nx, ny: c.ny }));
+
+  let asgn = new Array(norm.length).fill(0);
+  for (let iter = 0; iter < 60; iter++) {
+    const na = norm.map(p => {
+      let md = Infinity, best = 0;
+      cens.forEach((c, ci) => { const d=(p.nx-c.nx)**2+(p.ny-c.ny)**2; if(d<md){md=d;best=ci;} });
+      return best;
+    });
+    const changed = na.some((a,i) => a !== asgn[i]);
+    asgn = na;
+    if (!changed) break;
+    cens = cens.map((_, ci) => {
+      const m = norm.filter((_, i) => asgn[i] === ci);
+      if (!m.length) return cens[ci];
+      return { nx: m.reduce((s,p)=>s+p.nx,0)/m.length, ny: m.reduce((s,p)=>s+p.ny,0)/m.length };
+    });
+  }
+
+  drawSeg(pts, asgn, K, xF, yF);
+  updateClusterTable(pts, asgn, K);
+}
+
+function axLbl(f) { return f==='revenue'?'매출($K)':f==='margin'?'마진율(%)':'할인율(%)'; }
+
+function drawSeg(pts, asgn, K, xF, yF) {
+  const svg = document.getElementById('seg-svg');
+  if (!svg) return;
+  const W=700,H=280,P={l:50,r:20,t:18,b:42};
+  const cw=W-P.l-P.r,ch=H-P.t-P.b;
+
+  const xs=pts.map(p=>p.x),ys=pts.map(p=>p.y);
+  const xMin=Math.min(...xs),xMax=Math.max(...xs);
+  const yMin=Math.min(...ys),yMax=Math.max(...ys);
+  const xPad=(xMax-xMin)*.12,yPad=(yMax-yMin)*.12;
+
+  const px=v=>P.l+((v-xMin+xPad)/(xMax-xMin+2*xPad))*cw;
+  const py=v=>P.t+ch-((v-yMin+yPad)/(yMax-yMin+2*yPad))*ch;
+
+  let s='';
+  // grid
+  for(let i=0;i<=4;i++){
+    const xv=xMin+(xMax-xMin)*i/4, yv=yMin+(yMax-yMin)*i/4;
+    s+=`<line x1="${px(xv)}" x2="${px(xv)}" y1="${P.t}" y2="${P.t+ch}" stroke="#f0f0f0" stroke-width="1"/>`;
+    s+=`<line x1="${P.l}" x2="${W-P.r}" y1="${py(yv)}" y2="${py(yv)}" stroke="#f0f0f0" stroke-width="1"/>`;
+    const xl=xF==='revenue'?'$'+xv.toFixed(0)+'K':xv.toFixed(0)+'%';
+    const yl=yF==='revenue'?'$'+yv.toFixed(0)+'K':yv.toFixed(0)+'%';
+    s+=`<text x="${px(xv)}" y="${P.t+ch+14}" text-anchor="middle" fill="#aaa" font-size="9">${xl}</text>`;
+    s+=`<text x="${P.l-4}" y="${py(yv)+3}" text-anchor="end" fill="#aaa" font-size="9">${yl}</text>`;
+  }
+  s+=`<text x="${P.l+cw/2}" y="${H-4}" text-anchor="middle" fill="#888" font-size="10">${axLbl(xF)}</text>`;
+  s+=`<text x="10" y="${P.t+ch/2}" text-anchor="middle" fill="#888" font-size="10" transform="rotate(-90,10,${P.t+ch/2})">${axLbl(yF)}</text>`;
+
+  pts.forEach((p,i)=>{
+    const col=CLUSTER_COLORS[asgn[i]%CLUSTER_COLORS.length];
+    s+=`<circle cx="${px(p.x)}" cy="${py(p.y)}" r="7" fill="${col}" opacity="0.75"/>`;
+    s+=`<text x="${px(p.x)}" y="${py(p.y)+3.5}" text-anchor="middle" fill="white" font-size="7.5" font-weight="700">${p.cat}</text>`;
+  });
+
+  svg.innerHTML = s;
+}
+
+function updateClusterTable(pts, asgn, K) {
+  const rows = [];
+  for(let ci=0;ci<K;ci++){
+    const m=pts.filter((_,i)=>asgn[i]===ci);
+    if(!m.length) continue;
+    rows.push({
+      ci,
+      n: m.length,
+      avgRev:  m.reduce((s,p)=>s+p.x,0)/m.length,  // might not be revenue if axis changed
+      avgM:    TRANSACTIONS.filter((_,i)=>asgn[i]===ci).reduce((s,t)=>s+t.margin,0)/m.length,
+      avgD:    TRANSACTIONS.filter((_,i)=>asgn[i]===ci).reduce((s,t)=>s+t.discount,0)/m.length,
+      avgRevR: TRANSACTIONS.filter((_,i)=>asgn[i]===ci).reduce((s,t)=>s+t.revenue,0)/m.length,
+    });
+  }
+  rows.sort((a,b)=>b.avgRevR-a.avgRevR);
+
+  document.getElementById('cluster-tbody').innerHTML = rows.map((r,ri) =>
+    `<tr>
+      <td><span class="c-dot" style="background:${CLUSTER_COLORS[r.ci%CLUSTER_COLORS.length]}"></span>그룹 ${ri+1}</td>
+      <td>${r.n}건</td>
+      <td>$${r.avgRevR.toFixed(0)}K</td>
+      <td>${r.avgM.toFixed(1)}%</td>
+      <td>${r.avgD.toFixed(1)}%</td>
+    </tr>`
+  ).join('');
+
+  const highM = rows.filter(r=>r.avgM>25), lowM = rows.filter(r=>r.avgM<15);
+  let ins = '';
+  if(highM.length) ins += `<div class="find"><div class="fn">1</div><div class="ft"><strong>고마진 그룹:</strong> 마진 ${highM[0].avgM.toFixed(1)}%, 할인 ${highM[0].avgD.toFixed(1)}% — 확장 투자 대상.</div></div>`;
+  if(lowM.length)  ins += `<div class="find"><div class="fn fn-w">2</div><div class="ft"><strong>저마진 그룹:</strong> 마진 ${lowM[0].avgM.toFixed(1)}%, 할인 ${lowM[0].avgD.toFixed(1)}% — Furniture 집중, 할인 정책 재검토 우선.</div></div>`;
+  ins += `<div class="find"><div class="fn">i</div><div class="ft">K값·축 변경 → 다른 세분화 패턴 탐색 가능.</div></div>`;
+  document.getElementById('seg-insights').innerHTML = ins;
+}
+
+// ─── MONTE CARLO ───
+function randn() {
+  const u1=Math.random(),u2=Math.random();
+  return Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2);
+}
+
+function simUpdate() {
+  const disc = +document.getElementById('discSlider').value;
+  const elas = +document.getElementById('elasSlider').value;
+  document.getElementById('discVal').textContent = disc + '%';
+  document.getElementById('elasVal').textContent = (-elas/10).toFixed(1);
+  document.getElementById('sigmaVal').textContent = +document.getElementById('sigmaSlider').value + '%';
+  runMonteCarlo();
+}
+
+function runMonteCarlo() {
+  const discTarget = +document.getElementById('discSlider').value / 100;
+  const elasticity = -(+document.getElementById('elasSlider').value / 10);
+  const sigma = +document.getElementById('sigmaSlider').value / 100;
+
+  const BASE_REV = 130000, BASE_DISC = 0.177, BASE_MARGIN = 0.107;
+  const discDelta = discTarget - BASE_DISC;
+
+  const results = [];
+  for(let i=0;i<1000;i++){
+    const noise = randn() * sigma;
+    const demandChange = elasticity * discDelta + noise;
+    const newRev = BASE_REV * (1 + demandChange);
+    const newMargin = BASE_MARGIN + (BASE_DISC - discTarget);
+    const profitChange = newRev * newMargin - BASE_REV * BASE_MARGIN;
+    results.push(profitChange);
+  }
+  results.sort((a,b)=>a-b);
+
+  const mean = results.reduce((s,v)=>s+v,0)/results.length;
+  const p10  = results[Math.floor(1000*.1)];
+  const p90  = results[Math.floor(1000*.9)];
+  const probPos = results.filter(v=>v>0).length/10;
+
+  drawHistogram(results, mean, p10, p90);
+
+  document.getElementById('sim-stats').innerHTML = `
+    <div class="sim-stat"><div class="sim-stat-v">${fmtKAbs(mean)}</div><div class="sim-stat-l">이익 변화 (평균)</div></div>
+    <div class="sim-stat"><div class="sim-stat-v">${fmtKAbs(p10)}~${fmtKAbs(p90)}</div><div class="sim-stat-l">80% 신뢰구간</div></div>
+    <div class="sim-stat"><div class="sim-stat-v">${probPos.toFixed(0)}%</div><div class="sim-stat-l">이익 증가 확률</div></div>
+  `;
+}
+
+function drawHistogram(results, mean, p10, p90) {
+  const svg = document.getElementById('sim-svg');
+  if (!svg) return;
+  const W=700,H=220,P={l:55,r:20,t:18,b:38};
+  const cw=W-P.l-P.r,ch=H-P.t-P.b;
+  const BINS=40;
+  const minV=results[0],maxV=results[results.length-1];
+  const bw=(maxV-minV)/BINS;
+  const counts=new Array(BINS).fill(0);
+  results.forEach(v=>{const bi=Math.min(BINS-1,Math.floor((v-minV)/bw));counts[bi]++;});
+  const maxC=Math.max(...counts);
+
+  const px=v=>P.l+((v-minV)/(maxV-minV))*cw;
+  const py=c=>P.t+ch-(c/maxC)*ch;
+
+  let s='';
+  s+=`<line x1="${P.l}" x2="${W-P.r}" y1="${P.t+ch}" y2="${P.t+ch}" stroke="#e0e0e0" stroke-width="1"/>`;
+
+  const barW=cw/BINS-1;
+  counts.forEach((c,i)=>{
+    const v=minV+(i+.5)*bw;
+    const inCI=v>=p10&&v<=p90;
+    const isPos=v>0;
+    const fill=isPos?(inCI?'rgba(53,201,149,.9)':'rgba(53,201,149,.4)'):(inCI?'rgba(239,125,134,.8)':'rgba(239,125,134,.4)');
+    s+=`<rect x="${P.l+i/BINS*cw}" y="${py(c)}" width="${Math.max(1.5,barW)}" height="${ch-(py(c)-P.t)}" fill="${fill}" rx="1"/>`;
+  });
+
+  // zero line
+  if(minV<0&&maxV>0){
+    const x0=px(0);
+    s+=`<line x1="${x0}" x2="${x0}" y1="${P.t}" y2="${P.t+ch}" stroke="rgba(0,0,0,.3)" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+    s+=`<text x="${x0}" y="${P.t+ch+13}" text-anchor="middle" fill="#888" font-size="9">$0</text>`;
+  }
+
+  // mean line
+  const xM=px(mean);
+  s+=`<line x1="${xM}" x2="${xM}" y1="${P.t}" y2="${P.t+ch}" stroke="#1e8a5e" stroke-width="2"/>`;
+  s+=`<text x="${xM}" y="${P.t-4}" text-anchor="middle" fill="#1e8a5e" font-size="9" font-weight="700">평균 ${fmtKAbs(mean)}</text>`;
+
+  // x ticks
+  [-20000,-10000,0,5000,10000,15000,20000,25000].filter(v=>v>=minV*.9&&v<=maxV*1.1).forEach(v=>{
+    s+=`<text x="${px(v)}" y="${P.t+ch+13}" text-anchor="middle" fill="#aaa" font-size="9">${fmtKAbs(v)}</text>`;
+  });
+
+  s+=`<text x="${W/2}" y="${H}" text-anchor="middle" fill="#aaa" font-size="9">이익 변화 분포 (1,000회) — 음영: 80% 신뢰구간</text>`;
+  svg.innerHTML = s;
+}
+</script>
+</body>
+</html>
