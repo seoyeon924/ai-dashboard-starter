@@ -1,0 +1,16 @@
+# 결과물은 gitignore (개인 분석 결과 포함될 수 있음)
+runs/latest/outputs/*.md
+runs/latest/outputs/*.html
+runs/latest/outputs/*.json
+
+# 입력 데이터 (개인 데이터 보호)
+runs/latest/input/*.csv
+runs/latest/input/*.xlsx
+
+# 단, 샘플 데이터와 폴더 구조는 유지
+!data/sample_sales.csv
+!runs/latest/input/.gitkeep
+!runs/latest/outputs/.gitkeep
+
+# OS
+.DS_Store
