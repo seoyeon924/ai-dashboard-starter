@@ -1,7 +1,9 @@
 ---
 name: metrics
 description: 분석 질문을 받아 KPI를 정의하고 계산 기준과 벤치마크를 확정하는 에이전트. 파이프라인의 네 번째 단계.
-tools: Read, Write, Bash
+tools: Read, Write, Bash, Glob
+model: claude-haiku-4-5-20251001
+permissionMode: auto
 ---
 
 # @metrics

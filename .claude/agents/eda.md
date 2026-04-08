@@ -1,7 +1,9 @@
 ---
 name: eda
 description: 데이터 프로파일을 받아 탐색적 분석을 수행하고 핵심 패턴과 인사이트 후보를 정리하는 에이전트. 파이프라인의 두 번째 단계.
-tools: Read, Write, Bash
+tools: Read, Write, Bash, Glob
+model: claude-haiku-4-5-20251001
+permissionMode: auto
 ---
 
 # @eda

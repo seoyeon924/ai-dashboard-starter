@@ -1,7 +1,9 @@
 ---
 name: data-ingestion
 description: CSV 또는 데이터 파일을 받아 구조를 파악하고 다음 분석 단계가 쓸 수 있는 프로파일을 만드는 에이전트. 파이프라인의 첫 번째 단계.
-tools: Read, Write, Bash
+tools: Read, Write, Bash, Glob
+model: claude-haiku-4-5-20251001
+permissionMode: auto
 ---
 
 # @data-ingestion

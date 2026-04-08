@@ -1,7 +1,9 @@
 ---
 name: problem
 description: EDA 결과를 받아 비즈니스 관점의 핵심 분석 질문과 가설을 정의하는 에이전트. 파이프라인의 세 번째 단계.
-tools: Read, Write
+tools: Read, Write, Bash, Glob
+model: claude-haiku-4-5-20251001
+permissionMode: auto
 ---
 
 # @problem

@@ -1,7 +1,11 @@
 ---
 name: dashboard
 description: 분석 인사이트를 받아 DataBridge 디자인 시스템을 적용한 HTML 대시보드를 제작하는 에이전트. 파이프라인의 여섯 번째 단계.
-tools: Read, Write, Bash
+tools: Read, Write, Bash, Glob
+model: claude-sonnet-4-6
+permissionMode: auto
+skills:
+  - visualize
 ---
 
 # @dashboard

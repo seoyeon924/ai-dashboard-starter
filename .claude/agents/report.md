@@ -1,7 +1,9 @@
 ---
 name: report
 description: 대시보드와 분석 결과를 받아 임원 보고서와 액션 플랜을 작성하는 에이전트. 파이프라인의 일곱 번째(마지막) 단계.
-tools: Read, Write
+tools: Read, Write, Bash, Glob
+model: claude-haiku-4-5-20251001
+permissionMode: auto
 ---
 
 # @report

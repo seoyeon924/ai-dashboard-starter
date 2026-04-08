@@ -1,7 +1,9 @@
 ---
 name: analysis
 description: KPI와 분석 질문을 받아 방법론을 선택하고 핵심 인사이트를 도출하는 에이전트. 파이프라인의 다섯 번째 단계.
-tools: Read, Write, Bash
+tools: Read, Write, Bash, Glob
+model: claude-haiku-4-5-20251001
+permissionMode: auto
 ---
 
 # @analysis
